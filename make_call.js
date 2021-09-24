@@ -34,17 +34,19 @@ const makeCall = (data) => {
       machineDetection: "DetectMessageEnd",
       asyncAmd: true,
       asyncAmdStatusCallback: callBackDomain + "/amd-callback",
-      twiml: '<Response><Say language="ja-JP">Twilio Logisticsです。メッセージを取得しています。</Say><Pause length="10"/></Response>',
+      asyncAmdStatusCallbackMethod: "POST",
+      twiml: "<Response><Say language='ja-JP'>Twilio Logisticsです。メッセージを取得しています。</Say><Pause length='10'/></Response>",
       to: data.phoneNumber,
       from: outgoingPhoneNumber,
       statusCallback: callBackDomain + "/status-callback",
-      statusCallbackEvent: ['initiated', 'ringing', 'answered', 'completed']
+      statusCallbackEvent: ["initiated", "ringing", "answered", "completed"],
+      statusCallbackMethod: "POST"
     })
     .catch(error => {console.log(error)})
 }
 
 // Log call status
-app.post('/status-callback', function (req, res) {
+app.post("/status-callback", function (req, res) {
   console.log(`Call status changed: ${req.body.CallStatus}`)
   res.sendStatus(200)
 })
