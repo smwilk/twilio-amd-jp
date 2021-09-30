@@ -1,3 +1,5 @@
+This is a sample delivery reminder system made with [Twilio's AMD](https://www.twilio.com/docs/voice/answering-machine-detection).
+
 1. Install dependencies
 
 ```bash
@@ -19,7 +21,7 @@ TWILIO_PHONE_NUMBER=XXXXX
 NGROK_URL=XXXXX
 ```
 
-4. Add your recipient phone number to *delivery_data.json*:
+4. Add your recipient phone number to *delivery-data.json*:
 
 ```json
 [

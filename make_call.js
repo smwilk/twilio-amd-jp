@@ -1,30 +1,29 @@
 require("dotenv").config()
 
-// Twilio authentication information
+// Twilioの認証情報を環境変数として設定
 const accountSid = process.env.TWILIO_ACCOUNT_SID
 const authToken = process.env.TWILIO_AUTH_TOKEN
 const outgoingPhoneNumber = process.env.TWILIO_PHONE_NUMBER
 const callBackDomain = process.env.NGROK_URL
 
-// Import dependencies and resources
+// 依存パッケージやダミーデータをインポート
 const express = require("express")
 const client = require("twilio")(accountSid, authToken)
-const deliveryData = require("./delivery_data.json")
+const deliveryData = require("./delivery-data.json")
 
-// Create global app object and port
+// グローバルappオブジェクトとポートを作成
 const app = express()
 const port = 3000
 
-// Express config to parse incoming requests with JSON payloads
+// 受信したリクエストをJSONペイロードで解析するためのExpressの設定
 app.use(express.json())
 app.use(express.urlencoded({ extended: true }))
 
-
-// Global variables for the app
+// グローバル変数
 let earliestDeliveryTime = ""
 let latestDeliveryTime = ""
 
-// Make a call
+// 発信処理
 const makeCall = (data) => {
   earliestDeliveryTime = deliveryData[0].deliveryTime.split("-")[0]
   latestDeliveryTime = deliveryData[0].deliveryTime.split("-")[1]
@@ -35,7 +34,7 @@ const makeCall = (data) => {
       asyncAmd: true,
       asyncAmdStatusCallback: callBackDomain + "/amd-callback",
       asyncAmdStatusCallbackMethod: "POST",
-      twiml: "<Response><Say language='ja-JP'>Twilio Logisticsです。メッセージを取得しています。</Say><Pause length='10'/></Response>",
+      twiml: "<Response><Say language='ja-JP'>Twilio Logisticsです。メッセージを取得しています。</Say><Pause length='10'/></Response>",
       to: data.phoneNumber,
       from: outgoingPhoneNumber,
       statusCallback: callBackDomain + "/status-callback",
@@ -45,35 +44,38 @@ const makeCall = (data) => {
     .catch(error => {console.log(error)})
 }
 
-// Log call status
+// 通話ステータスを出力する
 app.post("/status-callback", function (req, res) {
   console.log(`Call status changed: ${req.body.CallStatus}`)
   res.sendStatus(200)
 })
 
-// Handle AMD process
+// AMD判定後の処理
 app.post("/amd-callback", function (req, res) {
   const callAnsweredByHuman = req.body.AnsweredBy === "human"
   const deliveryId = deliveryData[0].id
-  const deliveryMessage = `Twilio Logisticsよりお荷物お届けのお知らせです。本日${earliestDeliveryTime}時から${latestDeliveryTime}時の間にお荷物をお届けいたします。`
+  const deliveryMessage = `Twilio Logisticsよりお荷物お届けのお知らせです。本日${earliestDeliveryTime}時から${latestDeliveryTime}時の間にお荷物をお届けいたします。`
 
   if (callAnsweredByHuman) {
+    // 人間が電話に出た場合の処理
     console.log("Call picked up by human")
-    // Update ongoing call and play a delivery message
+    // 進行中の通話を更新し、配達リマインドメッセージを再生する
     client.calls(req.body.CallSid)
       .update({twiml: `<Response><Pause length="1"/><Say language="ja-JP">${deliveryMessage}</Say></Response>`})
       .catch(err => console.log(err))
   } else  {
-    const smsReminder = `Twilio Logisticsよりお荷物お届けのお知らせです。本日注文番号${deliveryId}のお荷物を${earliestDeliveryTime}時から${latestDeliveryTime}時の間にお届けいたします。`
+    // 留守番電話だった場合の処理
+    const smsReminder = `Twilio Logisticsよりお荷物お届けのお知らせです。本日注文番号${deliveryId}のお荷物を${earliestDeliveryTime}時から${latestDeliveryTime}時の間にお届けいたします。`
     console.log("Call picked up by machine")
-    // Update ongoing call, play a delivery message and send an SMS reminder
+    // 進行中の通話を更新し、配達リマインドメッセージを留守番電話に残す
     client.calls(req.body.CallSid)
-      .update({twiml: `<Response><Pause length="1"/><Say language="ja-JP">${deliveryMessage}SMSでリマインドをお送りいたします。</Say><Pause length="1"/></Response>
+      .update({twiml: `<Response><Pause length="1"/><Say language="ja-JP">${deliveryMessage}SMSでリマインドをお送りいたします。</Say><Pause length="1"/></Response>
     `})
+      // SMSでリマインダーを送信する
       .then(call =>      
         client.messages
           .create({body: smsReminder, from: call.from, to: call.to })
-          .then(message => console.log("message:", message.sid)))
+          .then(message => console.log(message.sid)))
       .catch(err => console.log(err))
   }
   res.sendStatus(200)
@@ -83,5 +85,5 @@ app.listen(port, () => {
   console.log(`Example app listening on port ${port}!`)
 })
 
-// Execute call function
+// 発信を開始
 makeCall(deliveryData[0])
