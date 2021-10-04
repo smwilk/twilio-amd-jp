@@ -37,5 +37,5 @@ NGROK_URL=XXXXX
 4. Run the app:
 
 ```bash
-node make_call.js
+node make-call.js
 ```
